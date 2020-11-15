@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: 2010-09-09
+Parameters:
+  Name:
+    Type: String
+    Default: LEGO-LAMBDA
+  Domain:
+    Type: String
+  Email:
+    Type: String
+  Bucket:
+    Type: String
+  PrivKey:
+    Type: String
+    Default: "privkey.pem"
+  PubKey:
+    Type: String
+    Default: "pubkey.crt"
+Resources:
+  IAMROLE:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::Region}-${Name}-role"
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement: 
+          Effect: Allow
+          Principal:
+            Service:
+              - "lambda.amazonaws.com"
+          Action:
+            - "sts:AssumeRole"
+  IAMPOLICY:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub "${Name}-policy"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogGroup'
+            Resource:
+              - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+          - Effect: Allow
+            Action:
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+            Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${Name}:*"
+          - Effect: Allow
+            Action:
+              - 'route53:GetChange'
+              - 'route53:ChangeResourceRecordSets'
+              - 'route53:ListResourceRecordSets'
+            Resource:
+              - 'arn:aws:route53:::hostedzone/*'
+              - 'arn:aws:route53:::change/*'
+          - Effect: Allow
+            Action:
+              - 'route53:ListHostedZonesByName'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+              - 's3:PutObject'
+            Resource: '*'
+      Roles:
+        - !Ref IAMROLE
+  LAMBDA:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref Name
+      Environment: 
+        Variables:
+          ACME_DOMAIN: !Ref Domain
+          ACME_EMAIL: !Ref Email
+          S3_BUCKET: !Ref Bucket
+          S3_PRIVKEY: !Ref PrivKey
+          S3_PUBKEY: !Ref PubKey
+          RUN_TYPE: "Lambda"
+      Runtime: go1.x
+      Role: !GetAtt IAMROLE.Arn
+      Handler: "main"
+      Code:
+        S3Bucket: "lego-lambda"
+        S3Key: "function.zip"
+      Timeout: 900
+      MemorySize: 3008
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref LAMBDA
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RATERULE.Arn
+  RATERULE:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Ref Name
+      ScheduleExpression: "rate(30 days)"
+      Targets:
+        - Arn: !GetAtt LAMBDA.Arn
+          Id: TargetFunctionV1

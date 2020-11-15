@@ -1,0 +1,10 @@
+#!/bin/bash
+name=LEGO-LAMBDA
+aws cloudformation validate-template --template-body file://./template.yaml | jq -r '.Parameters[].ParameterKey' | sort > .temp-params
+
+env | sort > .env-params
+
+params=`join -1 1 -2 1 -t "=" .temp-params .env-params | tr "\n" " "`
+echo $params
+
+aws cloudformation deploy --template-file ./template.yaml --stack-name LEGO-LAMBDA --fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides $params
