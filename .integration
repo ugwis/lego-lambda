@@ -2,7 +2,7 @@
 name=LEGO-LAMBDA
 aws cloudformation validate-template --template-body file://./template.yaml | jq -r '.Parameters[].ParameterKey' | sort > .temp-params
 
-env | sort > .env-params
+env | grep ".\+=.\+" | sort > .env-params
 
 params=`join -1 1 -2 1 -t "=" .temp-params .env-params | tr "\n" " "`
 echo $params
