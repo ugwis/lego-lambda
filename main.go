@@ -106,9 +106,9 @@ func handler() (string, error) {
   email := os.Getenv("ACME_EMAIL")
   domain := os.Getenv("ACME_DOMAIN")
   region := os.Getenv("AWS_REGION")
-  bucket := os.Getenv("AWS_BUCKET")
-  privkey := os.Getenv("AWS_PRIVKEY")
-  pubkey := os.Getenv("AWS_PUBKEY")
+  bucket := os.Getenv("S3_BUCKET")
+  privkey := os.Getenv("S3_PRIVKEY")
+  pubkey := os.Getenv("S3_PUBKEY")
 
 	myUser := MyUser{
     Email: email,
