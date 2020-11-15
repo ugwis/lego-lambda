@@ -2,7 +2,6 @@ package main
 
 import (
   "bytes"
-  "fmt"
   "context"
   "crypto"
   "crypto/ecdsa"
@@ -19,6 +18,9 @@ import (
   "github.com/go-acme/lego/v4/lego"
   "github.com/go-acme/lego/v4/providers/dns"
 
+  "github.com/aws/aws-lambda-go/lambda"
+  "github.com/aws/aws-lambda-go/cfn"
+
   "github.com/aws/aws-sdk-go/aws"
   "github.com/aws/aws-sdk-go/aws/session"
   "github.com/aws/aws-sdk-go/service/s3"
@@ -26,10 +28,6 @@ import (
 
 type MyEvent struct {
         Name string `json:"name"`
-}
-
-func HandleRequest(ctx context.Context, name MyEvent) (string, error) {
-        return fmt.Sprintf("Hello %s!", name.Name ), nil
 }
 
 // You'll need a user or account type that implements acme.User
@@ -65,10 +63,10 @@ func put_private(certificates *certificate.Resource, region string, bucket strin
   resp, err := svc.PutObject(params)
 
   if err != nil {
-    fmt.Println(err.Error())
+    log.Println(err.Error())
     return
   }
-  fmt.Println(resp)
+  log.Println(resp)
 }
 
 func put_public(certificates *certificate.Resource, region string, bucket string, keyname string){
@@ -91,17 +89,18 @@ func put_public(certificates *certificate.Resource, region string, bucket string
   res, err := svc.PutObject(params)
 
   if err != nil {
-    fmt.Println(err.Error())
+    log.Println(err.Error())
     return
   }
 
-  fmt.Println(res)
+  log.Println(res)
 }
 
-func main() {
+func handler() (string, error) {
   privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
-		log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
 	}
 
   email := os.Getenv("ACME_EMAIL")
@@ -122,21 +121,25 @@ func main() {
 
 	client, err := lego.NewClient(config)
 	if err != nil {
-		log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
 	}
 
   provider, err := dns.NewDNSChallengeProviderByName("route53")
   if err != nil {
-    log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
   }
 	err = client.Challenge.SetDNS01Provider(provider)
 	if err != nil {
-		log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
 	}
 
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
-		log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
 	}
 	myUser.Registration = reg
 
@@ -146,11 +149,39 @@ func main() {
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
-		log.Fatal(err)
+    log.Println(err.Error())
+    return "", err
 	}
-	fmt.Printf("%#v\n", certificates)
+	log.Printf("%#v\n", certificates)
 
   put_private(certificates, region, bucket, privkey)
 
   put_public(certificates, region, bucket, pubkey)
+
+  return "OK", nil
+}
+
+func lambda_handler(ctx context.Context, name MyEvent) (string, error) {
+  msg, err := handler()
+  return msg, err
+}
+
+func cfn_handler(ctx context.Context, event cfn.Event) (string, map[string]interface{}, error) {
+  msg, err := handler()
+  data := map[string]interface{}{}
+  return msg, data, err
+}
+
+func main() {
+  run_type := os.Getenv("RUN_TYPE")
+  if run_type == "CloudFormation" {
+    lambda.Start(cfn.LambdaWrap(cfn_handler))
+  }
+  if run_type == "Lambda" {
+    lambda.Start(lambda_handler)
+  }
+  if run_type == "Shell" {
+    handler()
+  }
+  return
 }
