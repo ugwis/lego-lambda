@@ -1,20 +1,27 @@
 package main
 
 import (
+  "bytes"
   "fmt"
   "context"
   "crypto"
- 	"crypto/ecdsa"
+  "crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
   "log"
+  "net/http"
+  "os"
+  "io/ioutil"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
-	//"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/registration"
   "github.com/go-acme/lego/v4/lego"
   "github.com/go-acme/lego/v4/providers/dns"
+
+  "github.com/aws/aws-sdk-go/aws"
+  "github.com/aws/aws-sdk-go/aws/session"
+  "github.com/aws/aws-sdk-go/service/s3"
 )
 
 type MyEvent struct {
@@ -43,45 +50,81 @@ func (u *MyUser) GetPrivateKey() crypto.PrivateKey {
 	return u.key
 }
 
-func main() {
+func put_private(certificates *certificate.Resource, region string, bucket string, keyname string){
+  body := certificates.PrivateKey
 
-	// Create a user. New accounts need an email and private key to start.
-	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+  sess := session.Must(session.NewSession())
+  svc := s3.New(sess, &aws.Config{Region: aws.String(region)})
+  params := &s3.PutObjectInput{
+    Bucket: aws.String(bucket),
+    Key:    aws.String(keyname),
+    ACL:    aws.String("bucket-owner-full-control"),
+    Body:   bytes.NewReader(body),
+    ContentLength: aws.Int64(int64(len(body))),
+  }
+  resp, err := svc.PutObject(params)
+
+  if err != nil {
+    fmt.Println(err.Error())
+    return
+  }
+  fmt.Println(resp)
+}
+
+func put_public(certificates *certificate.Resource, region string, bucket string, keyname string){
+  url := certificates.CertURL
+
+  resp, _ := http.Get(url)
+  defer resp.Body.Close()
+
+  body, _ := ioutil.ReadAll(resp.Body)
+
+  sess := session.Must(session.NewSession())
+  svc := s3.New(sess, &aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))})
+  params := &s3.PutObjectInput{
+    Bucket: aws.String(bucket),
+    Key:    aws.String(keyname),
+    ACL:    aws.String("bucket-owner-full-control"),
+    Body:   bytes.NewReader(body),
+    ContentLength: aws.Int64(int64(len(body))),
+  }
+  res, err := svc.PutObject(params)
+
+  if err != nil {
+    fmt.Println(err.Error())
+    return
+  }
+
+  fmt.Println(res)
+}
+
+func main() {
+  privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+  email := os.Getenv("ACME_EMAIL")
+  domain := os.Getenv("ACME_DOMAIN")
+  region := os.Getenv("AWS_REGION")
+  bucket := os.Getenv("AWS_BUCKET")
+  privkey := os.Getenv("AWS_PRIVKEY")
+  pubkey := os.Getenv("AWS_PUBKEY")
+
 	myUser := MyUser{
-    Email: os.Getenv("ACME_EMAIL"),
+    Email: email,
 		key:   privateKey,
 	}
 
 	config := lego.NewConfig(&myUser)
 
-	// This CA URL is configured for a local dev instance of Boulder running in Docker in a VM.
-	//config.CADirURL = "http://192.168.99.100:4000/directory"
 	config.Certificate.KeyType = certcrypto.RSA2048
 
-	// A client facilitates communication with the CA server.
 	client, err := lego.NewClient(config)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// We specify an HTTP port of 5002 and an TLS port of 5001 on all interfaces
-	// because we aren't running as root and can't bind a listener to port 80 and 443
-	// (used later when we attempt to pass challenges). Keep in mind that you still
-	// need to proxy challenge traffic to port 5002 and 5001.
-  /*
-	err = client.Challenge.SetHTTP01Provider(http01.NewProviderServer("", "5002"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = client.Challenge.SetTLSALPN01Provider(tlsalpn01.NewProviderServer("", "5001"))
-	if err != nil {
-		log.Fatal(err)
-	}
-  */
   provider, err := dns.NewDNSChallengeProviderByName("route53")
   if err != nil {
     log.Fatal(err)
@@ -91,8 +134,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-
-	// New users will need to register
 	reg, err := client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
 	if err != nil {
 		log.Fatal(err)
@@ -100,15 +141,16 @@ func main() {
 	myUser.Registration = reg
 
 	request := certificate.ObtainRequest{
-		Domains: []string{os.Getenv("ACME_DOMAIN")},
+		Domains: []string{domain},
 		Bundle:  true,
 	}
 	certificates, err := client.Certificate.Obtain(request)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Each certificate comes back with the cert bytes, the bytes of the client's
-	// private key, and a certificate URL. SAVE THESE TO DISK.
 	fmt.Printf("%#v\n", certificates)
+
+  put_private(certificates, region, bucket, privkey)
+
+  put_public(certificates, region, bucket, pubkey)
 }
