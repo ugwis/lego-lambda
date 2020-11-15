@@ -1,2 +1,2 @@
 # lego-lambda
-Update Let's encrypt Certificate in Lambda
+Validate with DNS01(Route 53 Provider) and generate certificates on lambda
