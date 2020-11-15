@@ -1,5 +1,4 @@
 #!/bin/bash
-name=LEGO-LAMBDA
 aws cloudformation validate-template --template-body file://./template.yaml | jq -r '.Parameters[].ParameterKey' | sort > .temp-params
 
 env | grep ".\+=.\+" | sort > .env-params
@@ -7,4 +6,4 @@ env | grep ".\+=.\+" | sort > .env-params
 params=`join -1 1 -2 1 -t "=" .temp-params .env-params | tr "\n" " "`
 echo $params
 
-aws cloudformation deploy --template-file ./template.yaml --stack-name ${Name:-LEGO-LAMBDA} --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides $params
+aws cloudformation deploy --template-file ./packaged-template.yaml --stack-name ${Name:-LEGO-LAMBDA} --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides $params

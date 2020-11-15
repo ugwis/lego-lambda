@@ -9,12 +9,23 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.15.4
+      id: go
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-northeast-1
+    - name: Cloudformation Package
+      run: |
+        ./.deploy
+      env:
+        LambdaBucket: ${{ secrets.LAMBDA_BUCKET }}
+        AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
     - name: Cloudformation Template Deploy
       run: |
         ./.integration

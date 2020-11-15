@@ -79,9 +79,7 @@ Resources:
       Runtime: go1.x
       Role: !GetAtt IAMROLE.Arn
       Handler: "main"
-      Code:
-        S3Bucket: "lego-lambda"
-        S3Key: "function.zip"
+      Code: pack
       Timeout: 900
       MemorySize: 3008
   LambdaPermission:
