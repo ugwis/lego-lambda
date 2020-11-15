@@ -19,6 +19,7 @@ jobs:
       run: |
         ./.integration
       env:
+        Name: ${{ secrets.CFN_NAME }}
         Domain: ${{ secrets.ACME_DOMAIN }}
         Email: ${{ secrets.ACME_EMAIL }}
         Bucket: ${{ secrets.S3_BUCKET }}
