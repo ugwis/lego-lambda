@@ -7,4 +7,4 @@ env | grep ".\+=.\+" | sort > .env-params
 params=`join -1 1 -2 1 -t "=" .temp-params .env-params | tr "\n" " "`
 echo $params
 
-aws cloudformation deploy --template-file ./template.yaml --stack-name LEGO-LAMBDA --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides $params
+aws cloudformation deploy --template-file ./template.yaml --stack-name ${Name:-LEGO-LAMBDA} --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM --parameter-overrides $params
