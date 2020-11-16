@@ -23,3 +23,4 @@ Validate with DNS01(Route 53) and generate certificates on lambda
 | S3_BUCKET             | S3 Bucket which it put generate certs on    | Yes       |
 | S3_PRIVKEY            | S3 Key which it put generate private key on | No        |
 | S3_PUBKEY             | S3 Key which it put generate public key on  | No        |
+| EVENT_SCHEDULE        | Schedule Expression for Rule. Please see [it](https://docs.aws.amazon.com/eventbridge/latest/userguide/scheduled-events.html) | No        |

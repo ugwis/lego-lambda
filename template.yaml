@@ -15,6 +15,9 @@ Parameters:
   PubKey:
     Type: String
     Default: "pubkey.crt"
+  Shedule:
+    Type: String
+    Default: "rate(30 days)"
 Resources:
   IAMROLE:
     Type: AWS::IAM::Role
@@ -93,7 +96,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Description: !Ref Name
-      ScheduleExpression: "rate(30 days)"
+      ScheduleExpression: !Ref Schedule
       Targets:
         - Arn: !GetAtt LAMBDA.Arn
           Id: TargetFunctionV1

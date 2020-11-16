@@ -36,4 +36,5 @@ jobs:
         Bucket: ${{ secrets.S3_BUCKET }}
         PrivKey: ${{ secrets.S3_PRIVKEY }}
         PubKey: ${{ secrets.S3_PUBKEY }}
+        Schedule: ${{ secrets.EVENT_SHEDULE }}
         AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
