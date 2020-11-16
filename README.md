@@ -1,6 +1,8 @@
 # lego-lambda
 Validate with DNS01(Route 53) and generate certificates on lambda
 
+![Architcture](https://user-images.githubusercontent.com/914815/99209252-14dee980-2806-11eb-8aae-0f4749a8f027.png "Architcture")
+
 # Simple Usage
 1. Fork this reposity
 2. Set GitHub Action secrets
