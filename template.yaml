@@ -15,7 +15,7 @@ Parameters:
   PubKey:
     Type: String
     Default: "pubkey.crt"
-  Shedule:
+  Schedule:
     Type: String
     Default: "rate(30 days)"
 Resources:
